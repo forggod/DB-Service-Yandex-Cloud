@@ -1,6 +1,5 @@
-﻿using Newtonsoft.Json;
-using System;
-using YaDBTest;
+﻿using System;
+using Newtonsoft.Json;
 using Ydb.Sdk;
 using Ydb.Sdk.Services.Table;
 
@@ -11,7 +10,7 @@ namespace YaDBTest
         static async Task Main(string[] args)
         {
             // Чтение файла ключа и получение IAM-токена
-            string json = File.ReadAllText("\\\\wsl.localhost\\Ubuntu\\home\\radzone\\key.json");
+            string json = File.ReadAllText(Config.keyPath);
             YaDBTest.ServiceAccount account = JsonConvert.DeserializeObject<YaDBTest.ServiceAccount>(json);
             if (Config.IsWriteKey)
             {
@@ -25,16 +24,38 @@ namespace YaDBTest
             var _ = new IAMToken();
             string? iamToken = await _.createAsync(account.private_key, account.id, account.service_account_id);
 
+
+
             // Обращение к YaDB
             var config = new DriverConfig(
-                endpoint: "grpcs://ydb.serverless.yandexcloud.net:2135",
-                database: "/ru-central1/b1g7j764i7vamqpln0vb/etnnu7nm5s0f2cu35q95",
+                endpoint: Config.UserEndpoint,
+                database: Config.UserDatabasePath,
                 credentials: new Ydb.Sdk.Auth.TokenProvider(iamToken)
             );
-            using var driver = new Driver(config: config);
-            await driver.Initialize();
+            await using var driver = await Driver.CreateInitialized(config);
+
             using var tableClient = new TableClient(driver, new TableClientConfig());
 
+            var response = await tableClient.SessionExec(async session =>
+            {
+                var query = @"
+                    SELECT id, temp
+                    FROM test;
+                ";
+                return await session.ExecuteDataQuery(
+                    query: query,
+                    txControl: TxControl.BeginSerializableRW().Commit()
+    );
+            });
+            response.Status.EnsureSuccess();
+            var queryResponse = (ExecuteDataQueryResponse)response;
+            var resultSet = queryResponse.Result.ResultSets[0];
+
+            foreach (var row in resultSet.Rows)
+            {
+                Console.WriteLine(row["id"].GetOptionalUint64());
+                Console.WriteLine((string?)row["temp"]);
+            }
         }
     }
 }
