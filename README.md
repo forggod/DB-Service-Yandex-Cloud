@@ -32,7 +32,21 @@
 
 Перед запуском приложения необходимо настроить файл Config.cs.
 
-![image](https://github.com/forggod/DB-Service-Yandex-Cloud/assets/91021642/f09cf4ce-7180-4967-b868-aad3be995629)
+```
+﻿namespace YaDBTest
+{
+    public static class Config
+    {
+        public const string keyPath = "D:";
+        public const string UserEndpoint = "grpcs://ydb.serverless.yandexcloud.net:2135";
+        public const string UserDatabasePath = "/ru-central1/";
+
+        public static bool IsDebugMode = true;
+        public static bool IsWriteKey = false;
+        public static bool IsWriteResponse = false;
+    }
+}
+```
 
 * Указываем полный путь к ключу.
 * Добавляем Endpoint, который находится на странице управления базой данных.
